@@ -1,0 +1,44 @@
+## DNS A record parse failed. <key: url(domain) value: count>
+[dns-failed]
+MemerySize = 100
+RunningUser = root
+LinkCount = 512
+ListeningAddr = 192.168.119.128
+ListeningPort = 13000
+PidFile = /tmp/memcached.pid.13000
+
+## redirect records. <key:url(all) value: redirection url(all)>
+[redirect]
+MemerySize = 100
+RunningUser = root
+LinkCount = 512
+ListeningAddr = 192.168.119.128
+ListeningPort = 13001
+PidFile = /tmp/memcached.pid.13001
+
+## DNS A records. <key:domain value:ip>
+[dns-success]
+MemerySize = 100
+RunningUser = root
+LinkCount = 512
+ListeningAddr = 192.168.119.128
+ListeningPort = 13002
+PidFile = /tmp/memcached.pid.13002
+
+## url info. <key:domain value:count+url(alls)>
+[url-info]
+MemerySize = 100
+RunningUser = root
+LinkCount = 512
+ListeningAddr = 192.168.119.128
+ListeningPort = 13003
+PidFile = /tmp/memcached.pid.13003
+
+## blacklist. <key:ip || domain value:time>
+[blacklist]
+MemerySize = 100
+RunningUser = root
+LinkCount = 512
+ListeningAddr = 192.168.119.128
+ListeningPort = 13004
+PidFile = /tmp/memcached.pid.13004

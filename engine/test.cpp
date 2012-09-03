@@ -26,11 +26,11 @@ int main(int argc,char* argv[])
 	myUrlCheck.setDnsFailLimit(5);
 	myUrlCheck.setUrlGetLimit(5);
 
-	myUrlCheck.setDnsFailMem("|192.168.188.16:13000");
-	myUrlCheck.setRedirectMem("|192.168.188.16:13001");
-	myUrlCheck.setDnsARecordMem("|192.168.188.16:13002");
-	myUrlCheck.setUrlInfoMem("|192.168.188.16:13003");
-	myUrlCheck.setBlackMem("|192.168.188.16:13004");
+	myUrlCheck.setDnsFailMem("|192.168.119.128:13000");
+	myUrlCheck.setRedirectMem("|192.168.119.128:13001");
+	myUrlCheck.setDnsARecordMem("|192.168.119.128:13002");
+	myUrlCheck.setUrlInfoMem("|192.168.119.128:13003");
+	myUrlCheck.setBlackMem("|192.168.119.128:13004");
 
 	int checkCode = myUrlCheck.Check(argv[1]);
 

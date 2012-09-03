@@ -1,0 +1,247 @@
+#!/bin/bash
+
+export SERVICE="/usr/local/bin/memcached"
+export CONF="./mem.cf"
+export Name
+export MemerySize
+export RunningUser
+export LinkCount
+export ListeningAddr 
+export ListeningPort
+export PidFile
+
+export Flag=0
+
+__usage()
+{
+	echo "Usage:	$1 <[start|stop|restart|status|list]> [all|name]"
+	echo "Example:"
+	echo "	$1 start	name	....start name"
+	echo "	$1 stat	name	....check name status"
+	echo "	$1 list	name	....list name config"
+	echo "	$1 start		....start all names"
+	echo "	$1 status		....check all names status"
+	echo "	$1 list		....list all names config"
+
+}
+
+__reset_config()
+{
+	Name=""
+	MemerySize=0
+	RunningUser=""
+	LinkCount=0
+	ListeningAddr=""
+	ListeningPort=0
+	PidFile=""
+}
+
+__strcmp()
+{
+        echo "$1" |grep "$2" >/dev/null
+        
+        if [ $? -eq 0 ];then
+                echo 0;
+        else
+                echo 1;
+        fi
+}
+__print_conf()
+{
+	echo "==================$Name===================="
+	echo "Name:		$Name"
+	echo "MemerySize:	$MemerySize"
+	echo "RunningUser:	$RunningUser"
+	echo "LinkCount:	$LinkCount"
+	echo "ListeningAddr:	$ListeningAddr"
+	echo "ListeningPort:	$ListeningPort"
+	echo "PidFile:	$PidFile"
+}
+
+__get_value()
+{
+	echo $@|awk -F '=' '{print $2}'|awk 'gsub(/^ *| *$/,"")'
+}
+
+__load_config()
+{
+	start=0 
+	end=0
+
+	__reset_config
+	Name="$1"
+
+	grep -r "\[$Name\]" $CONF >/dev/null
+	[ $? -ne 0 ] && { echo "No $Name config"; return 1; }
+
+	while read line
+	do
+		[[ `__strcmp "$line" "^#"` -eq 0 ]] && continue
+		[[ `__strcmp "$line" "^$"` -eq 0 ]] && continue
+		
+		[[ `__strcmp "$line" "\[$Name\]"` -eq 0 ]] && { start=1; continue; }
+		[[ `__strcmp "$line" "\[*\]"` -eq 0 ]] && [ $start -eq 1 ] && { end=1; break; }
+
+		if [ $start -eq 1 -a $end -ne 1 ];then
+			[[ `__strcmp "$line" "MemerySize"` -eq 0 ]] && MemerySize=`__get_value $line`
+			[[ `__strcmp "$line" "RunningUser"` -eq 0 ]] && RunningUser=`__get_value $line`
+			[[ `__strcmp "$line" "LinkCount"` -eq 0 ]] && LinkCount=`__get_value $line`
+			[[ `__strcmp "$line" "ListeningAddr"` -eq 0 ]] && ListeningAddr=`__get_value $line`
+			[[ `__strcmp "$line" "ListeningPort"` -eq 0 ]] && ListeningPort=`__get_value $line`
+			[[ `__strcmp "$line" "PidFile"` -eq 0 ]] && PidFile=`__get_value $line`
+		fi
+
+	done < $CONF
+
+	[ $MemerySize -eq 0 ] && return 1
+
+	return 0
+}
+
+__list_name()
+{
+	while read line
+	do
+		[[ `__strcmp "$line" "^#"` -eq 0 ]] && continue
+		[[ `__strcmp "$line" "^$"` -eq 0 ]] && continue
+		
+		[[ `__strcmp "$line" "\[*\]"` -eq 0 ]] && echo $line|awk 'gsub(/\[|\]/,"")' 
+	done < $CONF
+}
+
+__start()
+{
+	__check $1 >/dev/null 
+	[ $? -eq 0 ] && { echo "$1 already [running],return!"; return 1; }
+
+	echo "starting $1 ..."
+    Flag=1
+	__load_config $1
+	if [ $? -eq 0 ];then
+		${SERVICE} -d -m $MemerySize -u $RunningUser -l $ListeningAddr \
+		-p $ListeningPort -c $LinkCount -P $PidFile
+		sleep 1
+	else
+		echo "No $1 config"
+		return 1
+	fi
+	__check $1
+}
+
+__stop()
+{
+	__check $1 >/dev/null
+	[ $? -ne 0 ] && { echo "$1 already [stop],return!"; return 1; }
+
+	echo "stopping $1 ..."
+	__load_config $1
+	if [ $? -eq 0 ];then
+		if [ ! -f $PidFile ];then
+			kill -9 `ps -ef |grep $PidFile|awk '{print $2}'` >/dev/null 2>&1
+		else
+			kill -9 `cat $PidFile` >/dev/null 2>&1
+		fi
+
+		sleep 1
+		rm -f $PidFile
+	else
+		echo "No $1 config"
+		return 1
+	fi
+	__check $1
+}
+
+__restart()
+{
+	__stop $1
+	__start $1
+}
+
+__check()
+{
+	__load_config $1
+	[ $? -ne 0 ] && { echo "No $1 config"; return 1; }
+
+	if [ ! -f $PidFile ];then
+		kill -0 `ps -ef |grep $PidFile|awk '{print $2}'` >/dev/null 2>&1
+		if [ $? -eq 0 ];then
+			echo "$1	[abnormal start]"
+			return 0
+		else
+			echo "$1	[stop]"
+			return 1
+		fi
+	fi
+
+	kill -0 `cat $PidFile` >/dev/null 2>&1
+	if [ $? -eq 0 ];then
+		echo "$1	[running]"
+		return 0
+	else
+		echo "$1	[abnormal stop]"
+		return 1
+	fi
+}
+
+__list()
+{
+	__load_config $1
+	[ $? -eq 0 ] && __print_conf
+}
+
+__routine()
+{
+	case $2 in
+		start)
+			__start $3
+			;;
+		stop)
+			__stop $3
+			;;
+		restart)
+			__restart $3
+			;;
+		stat|status)
+			__check $3
+			;;
+		list|show)
+			__list $3
+			;;
+		*)
+			__usage $1
+			;;
+	esac
+	
+}
+
+__cmd_input_check()
+{
+	flag=1
+	cmds="start stop restart status stat list show"
+
+	for cmd in $cmds
+	do
+		if [ "$1" == "$cmd" ];then
+			flag=0
+			break
+		else
+			continue
+		fi
+	done
+
+	echo $flag
+	return $flag
+}
+
+[ ! -f $CONF ] && { echo "No $CONF file,exit!"; exit 1; } 
+
+if [ `__cmd_input_check $1` -eq 0 ] \
+	&& [ "$2" == "all" -o "x$2" == "x" ];then
+
+	for name in `__list_name`
+	do
+		__routine $0 $1 $name
+	done
+else 
+	__routine $0 $1 $2 
+fi
